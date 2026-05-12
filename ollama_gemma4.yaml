@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-llm-gemma4
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-llm
+  template:
+    metadata:
+      labels:
+        app: mcp-llm
+    spec:
+      serviceAccountName: mcp-server-sa
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+          env:
+            - name: HOME
+              value: "/ollama"
+            - name: OLLAMA_MODELS
+              value: "/ollama/models"
+          resources:
+            limits:
+              nvidia.com/gpu: 1 # V100 GPU 1개 할당
+          volumeMounts:
+            - name: ollama4-storage
+              mountPath: /ollama # 모델 데이터가 저장되는 경로
+      volumes:
+        - name: ollama4-storage
+          persistentVolumeClaim:
+            claimName: pvc-gemma4

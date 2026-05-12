@@ -1,0 +1,20 @@
+# ============================================================
+# OpenShift: MCP - ConfigMap
+# ============================================================
+# 네임스페이스: test
+# 적용: oc apply -f deploy/openshift/mcp-configmap.yaml
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-config
+  namespace: test
+data:
+  LLM_MODEL: gemma4:26b
+  LOG_LEVEL: INFO
+  MCP_HOST: 0.0.0.0
+  MCP_PORT: "8080"
+  MCP_SERVER_URL: http://mcp-tools-server.test.svc.cluster.local:8080
+  OLLAMA_BASE_URL: http://mcp-llm-service.test.svc.cluster.local:11434/v1
+  OLLAMA_MODEL: gemma4:26b
+  TRANSPORT: http

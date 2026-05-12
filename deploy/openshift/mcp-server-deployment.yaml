@@ -1,0 +1,110 @@
+# ============================================================
+# OpenShift: MCP Tools Server - Deployment + Service + Route
+# ============================================================
+# 네임스페이스: test
+# 빌드: oc start-build mcp-tools-server --from-dir=. -n test
+# 적용: oc apply -f deploy/openshift/mcp-server-deployment.yaml
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-tools-server
+  namespace: test
+  labels:
+    app: mcp-tools-server
+    component: mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-tools-server
+  template:
+    metadata:
+      labels:
+        app: mcp-tools-server
+      annotations:
+        # ★ Istio/OSSM 사이드카 주입 비활성화
+        # → 없으면 mTLS 때문에 POST /messages 에서 421 Misdirected Request 발생
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+        - name: mcp-tools-server
+          image: image-registry.openshift-image-registry.svc:5000/test/mcp-tools-server:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            # OpenWeatherMap API 키 (Secret에서 로드)
+            - name: OPENWEATHER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mcp-secrets
+                  key: openweather-api-key
+            # OpenAI API 키 (OCR용, Secret에서 로드)
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secrets
+                  key: api-key
+            - name: OPENAI_MODEL
+              value: "gpt-4o"
+          envFrom:
+            - configMapRef:
+                name: mcp-config
+          # /data 디렉토리: oc cp로 이미지를 복사할 작업 공간
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # ★ tcpSocket probe 사용 이유:
+          # MCP 서버는 /sse, /messages 엔드포인트만 있고
+          # /health 엔드포인트가 없어서 httpGet 사용 시 404 → Pod 재시작 반복
+          # tcpSocket은 포트가 열려있는지만 확인하므로 /health 없어도 OK
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: mcp-data-pvc  # NFS 공유 볼륨 (master1-100g-pv1)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-tools-server
+  namespace: test
+spec:
+  selector:
+    app: mcp-tools-server
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mcp-tools-server
+  namespace: test
+spec:
+  host: mcp-tools-server-test.apps.ocp.virt.local
+  to:
+    kind: Service
+    name: mcp-tools-server
+  port:
+    targetPort: 8080

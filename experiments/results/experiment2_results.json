@@ -1,0 +1,170 @@
+[
+  {
+    "scenario": "no_mcp",
+    "task_id": "task1_multi_tool",
+    "task_name": "복합 도구 사용 (날씨+시간+계산)",
+    "success": true,
+    "error": null,
+    "answer": "요청하신 정보에 대해 답변해 드립니다.\n\n1. **서울 날씨**: 저는 실시간 기상 정보에 접근할 수 있는 기능이 없기 때문에 현재 서울의 정확한 날씨를 알려드리기 어렵습니다. 정확한 날씨는 기상청이나 포털 사이트의 날씨 서비스를 확인해 주시기 바랍니다.\n2. **오늘 날짜**: 2024년 5월 22일입니다.\n3. **계산 결과**: 3 + 5 * 2의 결과는 **13**입니다. (사칙연산 규칙에 따라 곱셈을 먼저 계산하면 3 + 10 = 13이 됩니다.)",
+    "elapsed_seconds": 14.12,
+    "tool_calls": [],
+    "tool_call_count": 0
+  },
+  {
+    "scenario": "no_mcp",
+    "task_id": "task2_ocr",
+    "task_name": "OCR 이미지 텍스트 추출",
+    "success": true,
+    "error": null,
+    "answer": "죄송합니다. 저는 사용자의 로컬 파일 시스템이나 서버의 특정 디렉토리(예: `/data/images`)에 직접 접근할 수 있는 권한이 없습니다. 따라서 요청하신 디렉토리의 파일 목록을 확인하거나, 해당 경로에 있는 파일을 직접 읽어 텍스트를 추출하는 작업은 불가능합니다.\n\n만약 텍스트를 추출하고 싶은 이미지가 있다면, **이미지 파일을 이 채팅창에 직접 업로드**해 주세요. 이미지가 업로드되면 제가 해당 이미지를 분석하여 텍스트를 추출해 드릴 수 있습니다.",
+    "elapsed_seconds": 14.95,
+    "tool_calls": [],
+    "tool_call_count": 0
+  },
+  {
+    "scenario": "normal_mcp",
+    "task_id": "task1_multi_tool",
+    "task_name": "복합 도구 사용 (날씨+시간+계산)",
+    "success": true,
+    "error": null,
+    "answer": "서울의 현재 날씨와 요청하신 정보들을 정리해 드립니다.\n\n* **🌡️ 서울 날씨**: 현재 서울은 **온흐림** 상태이며, 기온은 **23.41°C**입니다. 습도는 57%로 쾌적한 편입니다.\n* **📅 오늘 날짜**: **2026년 5월 12일 화요일**입니다.\n* **🔢 계산 결과**: `3 + 5 * 2`의 결과는 **13**입니다.",
+    "elapsed_seconds": 9.01,
+    "tool_calls": [
+      {
+        "tool": "weather",
+        "args": {
+          "city": "Seoul"
+        },
+        "result_preview": "🌡️ Seoul, KR 현재 날씨\n━━━━━━━━━━━━━━━━━━━━━━━━\n🌡️  날씨 상태: 온흐림\n🌡️  현재 기온: 23.41°C (체감 23.29°C)\n📊 최저/최고: 23.41°C / 23.41°C\n💧 습도: 57%\n🔬 기압: 1009 hPa\n👁️  가시거리: 10 km\n💨 바람: 3.82 m/s (서북서풍), 돌풍 3.07 m/s\n☁️  구름량: 97%\n🌅 일출: 20:25 UTC | 🌇 일몰: 10:31 UTC",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.21
+      },
+      {
+        "tool": "get_datetime",
+        "args": {},
+        "result_preview": "🌐 현재 시간 (Asia/Seoul)\n📅 날짜: 2026년 05월 12일 (화요일)\n⏰ 시간: 14시 56분 29초\n🌍 UTC 기준: 2026-05-12 05:56:29 UTC\n📌 오프셋: UTC+09:00\n📡 시간 출처: NTP 인터넷 서버",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.75
+      },
+      {
+        "tool": "calculator",
+        "args": {
+          "expression": "3 + 5 * 2"
+        },
+        "result_preview": "✅ 3 + 5 * 2 = 13",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.01
+      }
+    ],
+    "tool_call_count": 3
+  },
+  {
+    "scenario": "normal_mcp",
+    "task_id": "task2_ocr",
+    "task_name": "OCR 이미지 텍스트 추출",
+    "success": true,
+    "error": null,
+    "answer": "`/data/images` 디렉토리에는 다음과 같은 6개의 이미지 파일이 있습니다.\n\n*   📄 IMG_9110.JPG\n*   📄 IMG_9111.JPG\n*   📄 IMG_9112.JPG\n*   📄 IMG_9113.JPG\n*   📄 IMG_9114.JPG\n*   📄 IMG_9115.JPG\n\n첫 번째 이미지인 `IMG_9110.JPG`에서 텍스트를 추출하려고 시도했으나, **OpenAI API의 사용량 제한(Quota Exceeded) 오류**로 인해 텍스트 추출에 실패했습니다. 현재 API 사용 가능한 할당량이 부족한 상태입니다.",
+    "elapsed_seconds": 14.22,
+    "tool_calls": [
+      {
+        "tool": "list_files",
+        "args": {
+          "directory_path": "/data/images"
+        },
+        "result_preview": "📂 /data/images (폴더 0개, 파일 6개)\n  📄 IMG_9110.JPG  (2566.3 KB, 2026-05-12 05:44:34)\n  📄 IMG_9111.JPG  (2515.3 KB, 2026-05-12 05:44:34)\n  📄 IMG_9112.JPG  (2772.2 KB, 2026-05-12 05:44:35)\n  📄 IMG_9113.JPG  (2657.4 KB, 2026-05-12 05:44:35)\n  📄 IMG_9114.JPG  (2441.1 KB, 2026-05-12 05:44:35)\n  📄 IMG_9115.JP",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.02
+      },
+      {
+        "tool": "ocr_extract",
+        "args": {
+          "image_path": "/data/images/IMG_9110.JPG"
+        },
+        "result_preview": "❌ OCR 오류: OpenAI API 오류 (HTTP 429): {\n    \"error\": {\n        \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n        \"type\": \"insufficient_quo",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 2.23
+      }
+    ],
+    "tool_call_count": 2
+  },
+  {
+    "scenario": "broken_mcp",
+    "task_id": "task1_multi_tool",
+    "task_name": "복합 도구 사용 (날씨+시간+계산)",
+    "success": true,
+    "error": null,
+    "answer": "서울의 현재 날씨와 요청하신 정보들을 정리해 드립니다.\n\n* **🌡️ 서울 날씨**: 현재 서울은 **온흐림** 상태이며, 기온은 **23.41°C**(체감 23.29°C)입니다. 습도는 57%로 쾌적한 편입니다.\n* **📅 오늘 날짜**: 오늘은 **2026년 5월 12일 화요일**입니다.\n* **🔢 계산 결과**: `3 + 5 * 2`의 계산 결과는 **13**입니다.",
+    "elapsed_seconds": 9.15,
+    "tool_calls": [
+      {
+        "tool": "weather",
+        "args": {
+          "city": "Seoul"
+        },
+        "result_preview": "🌡️ Seoul, KR 현재 날씨\n━━━━━━━━━━━━━━━━━━━━━━━━\n🌡️  날씨 상태: 온흐림\n🌡️  현재 기온: 23.41°C (체감 23.29°C)\n📊 최저/최고: 23.41°C / 23.41°C\n💧 습도: 57%\n🔬 기압: 1009 hPa\n👁️  가시거리: 10 km\n💨 바람: 3.82 m/s (서북서풍), 돌풍 3.07 m/s\n☁️  구름량: 97%\n🌅 일출: 20:25 UTC | 🌇 일몰: 10:31 UTC",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.21
+      },
+      {
+        "tool": "get_datetime",
+        "args": {},
+        "result_preview": "🌐 현재 시간 (Asia/Seoul)\n📅 날짜: 2026년 05월 12일 (화요일)\n⏰ 시간: 14시 56분 52초\n🌍 UTC 기준: 2026-05-12 05:56:52 UTC\n📌 오프셋: UTC+09:00\n📡 시간 출처: NTP 인터넷 서버",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.02
+      },
+      {
+        "tool": "calculator",
+        "args": {
+          "expression": "3 + 5 * 2"
+        },
+        "result_preview": "✅ 3 + 5 * 2 = 13",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.01
+      }
+    ],
+    "tool_call_count": 3
+  },
+  {
+    "scenario": "broken_mcp",
+    "task_id": "task2_ocr",
+    "task_name": "OCR 이미지 텍스트 추출",
+    "success": true,
+    "error": null,
+    "answer": "`/data/images` 디렉토리에는 다음과 같은 6개의 이미지 파일이 있습니다.\n\n*   IMG_9110.JPG\n*   IMG_9111.JPG\n*   IMG_9112.JPG\n*   IMG_9113.JPG\n*   IMG_9114.JPG\n*   IMG_9115.JPG\n\n첫 번째 이미지인 `IMG_9110.JPG`에서 텍스트를 추출하려고 시도했으나, **API 사용량 초과(insufficient_quota) 오류**로 인해 텍스트 추출에 실패했습니다. 이 문제를 해결하려면 API 할당량을 확인해 주세요.",
+    "elapsed_seconds": 13.84,
+    "tool_calls": [
+      {
+        "tool": "list_files",
+        "args": {
+          "directory_path": "/data/images",
+          "extension_filter": ".jpg"
+        },
+        "result_preview": "📂 /data/images (폴더 0개, 파일 6개)\n  📄 IMG_9110.JPG  (2566.3 KB, 2026-05-12 05:44:34)\n  📄 IMG_9111.JPG  (2515.3 KB, 2026-05-12 05:44:34)\n  📄 IMG_9112.JPG  (2772.2 KB, 2026-05-12 05:44:35)\n  📄 IMG_9113.JPG  (2657.4 KB, 2026-05-12 05:44:35)\n  📄 IMG_9114.JPG  (2441.1 KB, 2026-05-12 05:44:35)\n  📄 IMG_9115.JP",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 0.02
+      },
+      {
+        "tool": "ocr_extract",
+        "args": {
+          "image_path": "/data/images/IMG_9110.JPG",
+          "output_path": "/data/images/IMG_9110_ocr.txt"
+        },
+        "result_preview": "❌ OCR 오류: OpenAI API 오류 (HTTP 429): {\n    \"error\": {\n        \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n        \"type\": \"insufficient_quo",
+        "success": true,
+        "error": null,
+        "elapsed_seconds": 1.04
+      }
+    ],
+    "tool_call_count": 2
+  }
+]

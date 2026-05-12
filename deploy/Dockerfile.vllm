@@ -1,0 +1,40 @@
+# ============================================================
+# Dockerfile.vllm - vLLM 추론 서버 (V100 GPU용)
+# ============================================================
+# V100 GPU 특이사항:
+#   - Volta 아키텍처 (Compute Capability 7.0)
+#   - bfloat16 미지원 → --dtype float16 필수
+#   - VRAM: 16GB 또는 32GB
+
+# 빌드:   docker build -f deploy/Dockerfile.vllm -t vllm-server:v100 .
+# 실행:   docker run --gpus all -p 8000:8000 vllm-server:v100
+# ============================================================
+
+FROM vllm/vllm-openai:latest
+
+# V100 최적화 환경변수
+ENV TORCH_CUDA_ARCH_LIST="7.0"
+ENV CUDA_VISIBLE_DEVICES="0"
+
+# 작업 디렉토리
+WORKDIR /workspace
+
+# 헬스체크
+HEALTHCHECK --interval=60s --timeout=30s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# 포트
+EXPOSE 8000
+
+# 실행 명령 (환경변수로 모델명과 옵션 조정 가능)
+# 권장 모델 (V100 16GB 기준):
+#   - Qwen/Qwen2.5-7B-Instruct  (7B, float16 ~14GB)
+#   - meta-llama/Llama-3.2-3B-Instruct  (3B, float16 ~6GB)
+#   - microsoft/Phi-3.5-mini-instruct    (3.8B, float16 ~7.6GB)
+CMD ["python", "-m", "vllm.entrypoints.openai.api_server", \
+     "--model", "Qwen/Qwen2.5-7B-Instruct", \
+     "--dtype", "float16", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--max-model-len", "8192", \
+     "--served-model-name", "qwen2.5-7b"]

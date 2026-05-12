@@ -1,0 +1,74 @@
+# ============================================================
+# OpenShift: Ollama (gemma4) - Deployment + Service
+# ============================================================
+# 네임스페이스: test
+# 적용: oc apply -f deploy/openshift/ollama-test-deployment.yaml
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-llm-gemma4
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-llm
+  template:
+    metadata:
+      labels:
+        app: mcp-llm
+    spec:
+      # ★ Ollama는 root 권한이 필요하여 anyuid SCC가 할당된 ServiceAccount 사용
+      serviceAccountName: mcp-server-sa
+      securityContext:
+        runAsUser: 0
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 11434
+          protocol: TCP
+        env:
+        - name: HOME
+          value: /ollama
+        - name: OLLAMA_MODELS
+          value: /ollama/models
+        # ★ OLLAMA_HOST를 0.0.0.0으로 지정해야 외부(다른 Pod)에서 접근 가능
+        - name: OLLAMA_HOST
+          value: "0.0.0.0"
+        - name: OLLAMA_KEEP_ALIVE
+          value: "-1"
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+        volumeMounts:
+        - mountPath: /ollama
+          name: ollama4-storage
+      # ★ GPU 노드에 할당되도록 toleration 설정 필요할 수 있음
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      volumes:
+      - name: ollama4-storage
+        persistentVolumeClaim:
+          claimName: pvc-gemma4
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-llm-service
+  namespace: test
+  labels:
+    app: mcp-llm
+spec:
+  selector:
+    app: mcp-llm
+  ports:
+  - name: api
+    port: 11434
+    protocol: TCP
+    targetPort: 11434
+  type: ClusterIP

@@ -1,0 +1,62 @@
+# ============================================================
+# OpenShift: MCP Agent - Deployment
+# ============================================================
+# 네임스페이스: test
+# 실행 방법 (배포 후):
+#   oc exec -it deployment/mcp-agent -n test -- python client/agent.py
+#
+# 자동 입력 테스트:
+#   printf "서울 날씨?\n종료\n" | oc exec -i deployment/mcp-agent -n test -- python client/agent.py
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-agent
+  namespace: test
+  labels:
+    app: mcp-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-agent
+  template:
+    metadata:
+      labels:
+        app: mcp-agent
+      annotations:
+        # ★ Istio/OSSM 사이드카 주입 비활성화 (421 방지)
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+        - name: mcp-agent
+          image: image-registry.openshift-image-registry.svc:5000/test/mcp-agent:latest
+          imagePullPolicy: Always
+          # ★ sleep infinity: 컨테이너를 대기 상태로 유지
+          # → oc exec -it 으로 직접 python client/agent.py 실행
+          command: ["sleep", "infinity"]
+          stdin: true
+          tty: true
+          env:
+            # ★ LLM (Ollama) - test 네임스페이스 내부 서비스
+            - name: OLLAMA_BASE_URL
+              value: "http://mcp-llm-service.test.svc.cluster.local:11434/v1"
+            - name: LLM_MODEL
+              value: "gemma4:26b"
+            - name: OLLAMA_API_KEY
+              value: "ollama"
+            # ★ MCP 서버 - test 네임스페이스 내부 서비스
+            - name: MCP_SERVER_URL
+              value: "http://mcp-tools-server.test.svc.cluster.local:8080"
+            - name: TRANSPORT
+              value: "http"
+          envFrom:
+            - configMapRef:
+                name: mcp-config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
