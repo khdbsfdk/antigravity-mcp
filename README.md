@@ -11,7 +11,7 @@ MCP는 Anthropic이 개발한 **개방형 표준 프로토콜**로, AI 모델이
     ↓
 MCP Client (에이전트)
     ↓  JSON-RPC 2.0 (stdio / HTTP)
-MCP Server → Tool 실행 (calculator / datetime / weather)
+MCP Server → Tool 실행 (calculator / datetime / weather / ocr / file)
     ↓
 결과를 LLM에 전달
     ↓
@@ -24,30 +24,41 @@ MCP Server → Tool 실행 (calculator / datetime / weather)
 
 ```
 mcp_test/
-├── requirements.txt          # Python 의존성
-├── .env.example              # 환경변수 예시
+├── README.md
+├── requirements.txt             # Python 의존성
+├── .env.example                 # 환경변수 템플릿
 │
-├── server/                   # ★ MCP 서버 (도구 제공)
-│   ├── __init__.py
-│   ├── server.py             # FastMCP 진입점 + Tool 등록
+├── server/
+│   ├── server.py                # FastMCP 서버 (10개 Tool 등록)
 │   └── tools/
-│       ├── __init__.py
-│       ├── calculator.py     # 수식 계산 Tool
-│       ├── datetime_tool.py  # NTP 시간 Tool
-│       └── weather.py        # OpenWeatherMap 날씨 Tool
+│       ├── calculator.py        # Tool 1: 사칙연산 계산기
+│       ├── datetime_tool.py     # Tool 2: NTP 기반 날짜/시간 조회
+│       ├── weather.py           # Tool 3: 날씨 조회 (OpenWeatherMap)
+│       ├── ocr.py               # Tool 4: 이미지 OCR (Google Gemini)
+│       ├── openai-ocr.py        # Tool 4 백업: 이전 OpenAI 버전 (미사용)
+│       └── file_utils.py        # Tool 5: 파일 읽기/디렉토리 조회
 │
-├── client/                   # ★ MCP 에이전트 (LLM + Tool 호출)
-│   ├── __init__.py
-│   └── agent.py              # Ollama + MCP 연동 에이전트
+├── client/
+│   └── agent.py                 # LLM + MCP Tool Call 에이전트
+│
+├── image_data/                  # OCR 테스트용 이미지 데이터
+│
+├── experiments/                 # 오케스트레이션 실험
+│   ├── experiment_runner.py
+│   └── orchestration/
+│       ├── benchmark.py
+│       └── __init__.py
 │
 └── deploy/
-    ├── Dockerfile            # mcp-tools-server 이미지
-    ├── Dockerfile.client     # mcp-agent 이미지
+    ├── Dockerfile               # MCP 서버 컨테이너
+    ├── Dockerfile.client        # MCP 에이전트 컨테이너
+    ├── Dockerfile.vllm          # vLLM 추론 서버 (V100 GPU)
+    ├── deploy.sh                # OpenShift 배포 스크립트
     └── openshift/
-        ├── ollama-test-deployment.yaml   # Ollama LLM Pod
-        ├── mcp-server-deployment.yaml    # MCP Tools Server
-        └── agent-deployment.yaml         # MCP Agent
-
+        ├── mcp-server-deployment.yaml  # MCP 서버 + Service + Route
+        ├── mcp-configmap.yaml          # 공통 환경변수 ConfigMap
+        ├── agent-deployment.yaml       # 에이전트 Deployment
+        └── ollama-test-deployment.yaml # Ollama (gemma4:26b) Deployment
 ```
 
 ---
@@ -75,12 +86,16 @@ cp .env.example .env
 `.env` 파일을 열고 값을 채워주세요:
 
 ```dotenv
-# LLM API 키 (OpenAI 사용 시)
-OPENAI_API_KEY=sk-xxxxxxxx
-LLM_MODEL=gpt-4o-mini
+# LLM (Ollama)
+OLLAMA_BASE_URL=http://mcp-llm-service.test.svc.cluster.local:11434/v1
+OLLAMA_API_KEY=ollama
+LLM_MODEL=gemma4:26b
 
 # 날씨 API 키 (https://openweathermap.org 무료 가입 후 발급)
 OPENWEATHER_API_KEY=xxxxxxxx
+
+# OCR (Google AI Studio - Gemini)
+GEMINI_API_KEY=xxxxxxxx
 ```
 
 ### 3. MCP 서버 단독 실행 (테스트용)
@@ -121,6 +136,34 @@ python client/agent.py
 | `get_timezones` | 타임존 목록 | `region="Asia"` |
 | `weather` | 현재 날씨 조회 | `city="Seoul", units="metric"` |
 | `find_city` | 도시 위치 검색 | `city_name="Springfield"` |
+| `ocr_extract` | 이미지 OCR 텍스트 추출 | `image_path="/data/img.jpg"` |
+| `read_file` | 텍스트 파일 읽기 | `file_path="/data/result.txt"` |
+| `list_files` | 디렉토리 파일 목록 | `directory_path="/data/images"` |
+
+### 🔍 OCR Tool 상세
+
+OCR 기능은 **Google AI Studio (Gemini 2.5 Flash Lite)** 모델을 사용하여 이미지에서 텍스트를 추출합니다.
+
+> ⚠️ **변경 이력**: 초기에는 OpenAI GPT-4o Vision API를 사용했으나, API 키 만료로 인해 Google Gemini로 전환하였습니다. 이전 코드는 `openai-ocr.py`에 백업되어 있습니다.
+
+**두 가지 모드:**
+- **단일 이미지 모드**: `image_path`에 이미지 파일 경로 지정
+- **디렉토리 모드**: `directory_path`에 폴더 경로 지정 → 모든 이미지를 일괄 OCR
+
+```
+👤 사용자: /data/images 폴더의 이미지들을 OCR 처리해줘
+🤖 어시스턴트:
+  🔧 Tool 호출: ocr_extract(directory_path='/data/images')
+  📋 결과: ✅ OCR 완료! 3개 이미지 → 성공 3개
+           💾 결과 파일: images/ocr_result.txt
+```
+
+**필요한 환경변수:**
+- `GEMINI_API_KEY`: Google AI Studio API 키
+
+**지원 이미지 형식:** jpg, jpeg, png
+
+> ℹ️ 무료 티어 속도 제한(RPM) 준수를 위해 이미지 한 장당 4초 간격으로 처리됩니다.
 
 ---
 
@@ -160,43 +203,66 @@ python client/agent.py
 
 ---
 
-## ☁️ OpenShift 배포 (V100 GPU)
+## ☁️ OpenShift 배포
 
 ### 아키텍처
 
 ```
-[외부 사용자]
-    │
-    ▼ HTTPS
-[OpenShift Route: mcp-tools-server]
-    │
-    ▼ ClusterIP
-[MCP Tools Server Pod] ──── [vLLM Server Pod (V100)]
-    │                              │
-    │ Tools                        │ LLM Inference
-    └── calculator                 └── Qwen2.5-7B-Instruct
-    └── datetime                       (float16, 8192 ctx)
-    └── weather
+[사용자 터미널]
+    oc exec -it deployment/mcp-agent -n test -- python client/agent.py
+                    │
+                    ▼
+         [mcp-agent Pod] (test ns)
+         gemma4:26b 모델에 질문
+                    │
+         ┌──────────┴──────────┐
+         ▼                     ▼
+[mcp-llm-service:11434]  [mcp-tools-server:8080]
+ Ollama + gemma4:26b      SSE Transport + 10 Tools
+ V100 32GB GPU            calculator / datetime /
+                          weather / ocr / file_utils
 ```
 
 ### 배포 순서
 
 ```bash
-# 1. vLLM 서버 배포 (모델 다운로드 5~15분 소요)
-oc apply -f deploy/openshift/vllm-deployment.yaml
+# 1. ConfigMap 적용
+oc apply -f deploy/openshift/mcp-configmap.yaml
 
-# vLLM 상태 확인 (Running 상태 대기)
-oc get pods -n mcp-demo -w
+# 2. Ollama (gemma4) 배포 (모델 로드 시간 소요)
+oc apply -f deploy/openshift/ollama-test-deployment.yaml
 
-# 2. MCP 서버 배포
+# Ollama 상태 확인 (Running 상태 대기)
+oc get pods -n test -w
+
+# 3. MCP 서버 배포
 oc apply -f deploy/openshift/mcp-server-deployment.yaml
-oc apply -f deploy/openshift/mcp-server-service.yaml
 
-# 3. Route 확인
-oc get route -n mcp-demo
+# 4. 에이전트 배포
+oc apply -f deploy/openshift/agent-deployment.yaml
 
-# 4. (선택) 자동 배포 스크립트
-bash deploy/deploy.sh mcp-demo quay.io/myorg
+# 5. Route 확인
+oc get route -n test
+
+# 6. 에이전트 실행 (대화형)
+oc exec -it deployment/mcp-agent -n test -- python client/agent.py
+```
+
+### 이미지 빌드 (OpenShift BuildConfig)
+
+```bash
+# MCP 서버 이미지 빌드
+oc start-build mcp-tools-server --from-dir=. -n test --follow
+
+# MCP 에이전트 이미지 빌드
+oc start-build mcp-agent --from-dir=. -n test --follow
+```
+
+### OCR 이미지 데이터 전송
+
+```bash
+# bastion에서 이미지를 Pod 내부로 복사
+oc cp ./image_data/ mcp-tools-server-<pod-id>:/data/images -n test
 ```
 
 ### V100 특이사항
@@ -205,25 +271,11 @@ bash deploy/deploy.sh mcp-demo quay.io/myorg
 > vLLM 실행 시 반드시 `--dtype float16` 옵션을 사용해야 합니다.
 
 | 항목 | 값 |
-|------|----|
+|------|-----|
 | GPU 아키텍처 | Volta (Compute Capability 7.0) |
 | 지원 dtype | `float16` (bfloat16 ❌) |
-| 권장 모델 (16GB) | `Qwen/Qwen2.5-7B-Instruct` |
-| 권장 모델 (32GB) | `meta-llama/Llama-3.1-13B-Instruct` |
-| 최대 컨텍스트 | 8192 토큰 (16GB 기준) |
-
-### vLLM 연결로 에이전트 실행
-
-```bash
-# vLLM Route 주소 확인
-VLLM_ROUTE=$(oc get route vllm-server -n mcp-demo -o jsonpath='{.spec.host}')
-
-# 환경변수 설정 후 에이전트 실행
-OPENAI_API_KEY=EMPTY \
-OPENAI_BASE_URL="https://${VLLM_ROUTE}/v1" \
-LLM_MODEL="qwen2.5-7b" \
-python client/agent.py
-```
+| 현재 사용 모델 | `gemma4:26b` (Ollama) |
+| GPU VRAM | 32GB (Tesla V100-SXM2-32GB) |
 
 ---
 
@@ -244,7 +296,8 @@ python client/agent.py
 
 // 2. 서버 → 클라이언트: Tool 목록 응답
 {"jsonrpc":"2.0","result":{"tools":[
-  {"name":"calculator","description":"수식 계산","inputSchema":{...}}
+  {"name":"calculator","description":"수식 계산","inputSchema":{...}},
+  {"name":"ocr_extract","description":"이미지 OCR","inputSchema":{...}}
 ]},"id":1}
 
 // 3. 클라이언트 → 서버: Tool 실행 요청
@@ -262,11 +315,15 @@ python client/agent.py
 ```
 mcp[cli]         # MCP SDK (서버/클라이언트)
 fastmcp          # FastMCP 프레임워크
-openai           # OpenAI / vLLM API 클라이언트
+google-genai     # Google AI Studio (Gemini OCR)
 requests         # HTTP 요청 (날씨 API)
+httpx            # HTTP 클라이언트
 python-dotenv    # 환경변수 관리
 ntplib           # NTP 시간 조회
 pytz             # 타임존 처리
+Pillow           # 이미지 처리
+uvicorn          # ASGI 서버
+anyio            # 비동기 유틸리티
 ```
 
 ---
@@ -275,7 +332,6 @@ pytz             # 타임존 처리
 
 - 🗄️ **데이터베이스 Tool**: SQL 쿼리 실행 (PostgreSQL, SQLite)
 - 🔍 **웹 검색 Tool**: 인터넷 검색 결과 조회
-- 📁 **파일 시스템 Tool**: 파일 읽기/쓰기
 - 📧 **이메일 Tool**: 이메일 발송
 - 🗺️ **지도 Tool**: 경로 안내, 장소 검색
 
@@ -286,5 +342,6 @@ pytz             # 타임존 처리
 - [MCP 공식 문서](https://modelcontextprotocol.io)
 - [FastMCP 문서](https://gofastmcp.com)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
-- [vLLM 문서](https://docs.vllm.ai)
+- [Google AI Studio](https://aistudio.google.com)
+- [Ollama 문서](https://ollama.com)
 - [OpenWeatherMap API](https://openweathermap.org/api)
