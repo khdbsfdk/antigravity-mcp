@@ -30,6 +30,7 @@ ENV PYTHONPATH=/app \
 COPY client/ ./client/
 COPY server/ ./server/
 COPY experiments/ ./experiments/
+COPY ../image_data ./images/
 
 # OpenShift random UID 대응
 RUN chown -R root:root /app \

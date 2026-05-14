@@ -56,7 +56,7 @@ logger = logging.getLogger("mcp-agent")
 # ─────────────────────────────────────────────────
 # --- LLM (Ollama) ---
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://ollama-service:11434/v1")
-LLM_MODEL       = os.environ.get("LLM_MODEL", "gemma3:4b")
+LLM_MODEL       = os.environ.get("LLM_MODEL", "gemma4:26b")
 # Ollama는 API 키가 필요 없지만 openai 라이브러리는 값을 요구함
 OLLAMA_API_KEY  = os.environ.get("OLLAMA_API_KEY", "ollama")
 

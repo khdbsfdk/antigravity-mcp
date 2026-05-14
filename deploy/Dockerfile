@@ -32,6 +32,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 소스 코드 복사
 COPY server/ ./server/
 COPY client/ ./client/
+COPY ../image_data ./images/
 
 # OpenShift random UID 대응: 파일/디렉토리를 root 그룹(0) 소유로 설정하고 그룹 읽기 권한 부여
 # (SCC restricted-v2: 임의 UID + root 그룹으로 실행됨)

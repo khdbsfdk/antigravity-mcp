@@ -7,7 +7,8 @@ requests>=2.31.0
 httpx>=0.27.0
 
 # LLM Client (OpenAI-compatible)
-openai>=1.30.0
+#openai>=1.30.0
+google-genai
 
 # Time / Timezone
 ntplib>=0.4.0
